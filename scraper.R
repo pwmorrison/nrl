@@ -388,6 +388,7 @@ process_match_page <- function(match_url) {
   # Replace the <br> tags with something that is retained and we can split on.
   match_html <- gsub("<br>", " | ", match_html)
   match_html <- gsub("<br />", " | ", match_html)
+  match_html <- gsub("&nbsp;", "0", match_html)
   write(match_html, file="match.html")
   #saveXML(match_html, file="match.html")
   match_tables <- readHTMLTable(match_html, stringsAsFactors = FALSE, asText=TRUE)
