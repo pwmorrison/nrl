@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
-import urllib2
+#import urllib
+from urllib.request import urlopen
 import datetime
 import os
 
@@ -38,7 +39,7 @@ def output_table_to_csv(table, name):
     csv_file = open(name + ".csv", 'w')    
 
     rows = table.find_all("tr")
-    print len(rows)
+    print(len(rows))
     #print table
     for row in rows:
         csv_str = ""
@@ -54,7 +55,7 @@ def output_table_to_csv(table, name):
             # Get the value of the cell.
             cell_value = " "
             if cell.string != None:
-                print cell.get_text()
+                print(cell.get_text())
                 try:
                     cell_value = str(cell.get_text())#string)
                 except:
@@ -78,7 +79,8 @@ def output_table_to_csv(table, name):
 Extracts the data from the tables in the given URL, writing it to CSV files.
 """
 def extract_data_from_url(url):
-    f = urllib2.urlopen(url)
+    #f = urllib2.urlopen(url)
+    f = urlopen(url)
     html = f.read()
     f.close()
     soup = BeautifulSoup(html)
@@ -95,7 +97,7 @@ def extract_data_from_url(url):
             cls = table["class"]
         except:
             continue
-        print id, cls
+        print(id, cls)
     
         output_table_to_csv(table, id)
         
@@ -104,7 +106,8 @@ def extract_data_from_url(url):
 Extracts the data from the tables in the given URL, writing it to CSV files.
 """
 def extract_pbp_data_from_url(url):
-    f = urllib2.urlopen(url)
+    #f = urllib2.urlopen(url)
+    f = urlopen(url)
     html = f.read()
     
     html = html.replace("<th", "<td")
@@ -133,14 +136,15 @@ def extract_pbp_data_from_url(url):
         except:
             # The table that doesn't have an ID is the play-by-play one.
             id = "PBP"
-        print id
+        print(id)
     
         output_table_to_csv(table, id)
         
         
         
 def get_box_score_links(url):
-    f = urllib2.urlopen(url)
+    #f = urllib2.urlopen(url)
+    f = urlopen(url)
     html = f.read()
     f.close()
     soup = BeautifulSoup(html)
@@ -163,11 +167,11 @@ def form_date_url(date):
     
 def extract_box_scores(date):
     date_url = form_date_url(date)
-    print date_url
+    print(date_url)
     
     # Create a directory in which to store the files
     date_dir = os.path.join(os.getcwd(), date.isoformat())
-    print date_dir
+    print(date_dir)
     
     old_cwd = os.getcwd()
     if not os.path.exists(date_dir):
@@ -175,7 +179,7 @@ def extract_box_scores(date):
     os.chdir(date_dir)
     
     box_score_links = get_box_score_links(date_url)
-    print "Found box score links:", box_score_links
+    print("Found box score links:", box_score_links)
 
     game_num = 0
     for box_score_link in box_score_links:
@@ -194,24 +198,31 @@ def extract_box_scores(date):
     
 def extract_box_scores_range(start_date, end_date):
     assert(start_date <= end_date)
-    print "Extracting box scores from", start_date, "to", end_date
+    print("Extracting box scores from", start_date, "to", end_date)
     
     one_day = datetime.timedelta(days=1)
     
     # Loop through the dates in the given range.
     current_date = start_date
     while current_date <= end_date:
-        print current_date
+        print(current_date)
         
         extract_box_scores(current_date)
         
         current_date += one_day
     
-def nrlstats_form_season_url(year):
-    #base_url = "http://live.nrlstats.com/nrl/season"
-    base_url = "http://web.archive.org/web/20080718185646/http://www.nrlstats.com/season"
-    url = base_url + str(year) + ".html"
-    url = "http://web.archive.org/web/20080718185646/http://www.nrlstats.com/season2007/index.html"
+def nrlstats_form_season_url(year, base_url):
+    
+    if year == 2007:
+        # For 2007, base_url = http://web.archive.org/web/20080718185646/http://www.nrlstats.com/season2007
+        url = base_url + "index.html"
+    elif year == 2008:
+        url = base_url + "nrl/season2008.html"
+    elif year == 2015:
+        # For 2015, base_url = http://live.nrlstats.com
+        #base_url = "http://live.nrlstats.com/nrl/season"
+        url = base_url + "/nrl/season" + str(year) + ".html"
+    
     return url
     
 def get_nrlstats_row_values(row):
@@ -266,7 +277,7 @@ def get_nrlstats_game_stats(div, date, teams):
     for table_div in table_divs:
         if 'id' not in table_div.attrs.keys():
             continue
-        print table_div['id']
+        print(table_div['id'])
 
         if table_div['id'] == "tab-mdHalf-0-data":
             # Total game stats.
@@ -284,7 +295,7 @@ def get_nrlstats_game_stats(div, date, teams):
         
         # Each row (except the heading row) contains a stat.
         for row in rows[0:]:
-            print row
+            print(row)
             
             stat, val_1, val_2 = get_nrlstats_row_values(row)
             
@@ -304,7 +315,7 @@ def get_nrlstats_team_stats(div, date, teams):
     for table_div in table_divs:
         if 'id' not in table_div.attrs.keys():
             continue
-        print table_div['id']
+        print(table_div['id'])
 
         if table_div['id'] == "tab-tsHalf-0-data":
             # Total game stats.
@@ -322,7 +333,7 @@ def get_nrlstats_team_stats(div, date, teams):
         
         # Each row (except the heading row) contains a stat.
         for row in rows[0:]:
-            print row
+            print(row)
             
             stat, val_1, val_2 = get_nrlstats_row_values(row)
             
@@ -406,7 +417,9 @@ def get_nrlstats_game_stats(div, date, teams, csv_name):
     file.close()
         
 def get_nrlstats_match(url, date, teams, year):
-    f = urllib2.urlopen(url)
+    #f = urllib2.urlopen(url)
+    print(url)
+    f = urlopen(url)
     html = f.read()
     f.close()
     soup = BeautifulSoup(html)
@@ -416,10 +429,10 @@ def get_nrlstats_match(url, date, teams, year):
     month_str = date.split('_')[1]
     month = month_map[month_str.lower()]
     date_str = str(year) + str("%02d" % month) + str("%02d" % day_of_month)
-    print date_str
+    print(date_str)
     
     match_dir = os.path.join(os.getcwd(), date_str + "_" + teams[0] + "_" + teams[1])
-    print match_dir
+    print(match_dir)
     
     old_cwd = os.getcwd()
     if not os.path.exists(match_dir):
@@ -432,7 +445,7 @@ def get_nrlstats_match(url, date, teams, year):
    
     # Write out the html to a file.
     html_file = open("webpage.html", 'w')
-    html_file.write(html)
+    html_file.write(str(html))
     html_file.close()
     
     if False:
@@ -455,7 +468,7 @@ def get_nrlstats_match(url, date, teams, year):
                     if heading == None:
                         continue
                     heading = heading.strip()
-                    print heading
+                    print(heading)
                     if heading == "Game Stats":
                         pass#get_nrlstats_game_stats(div, date, teams)
                     elif heading == "Team Stats":    
@@ -528,9 +541,10 @@ def get_nrlstats_match(url, date, teams, year):
         if div['id'] == "page-scorecard-data":
             get_nrlstats_game_stats(div, date, teams, "game_scorecard.csv")
             
-def get_nrlstats_season_links(url, year):
-    print url
-    f = urllib2.urlopen(url)
+def get_nrlstats_season_links(url, year, base_url):
+    print(url)
+    #f = urllib2.urlopen(url)
+    f = urlopen(url)
     html = f.read()
     f.close()
     soup = BeautifulSoup(html)
@@ -540,7 +554,7 @@ def get_nrlstats_season_links(url, year):
     tmp_file.close()
     
     # Write out the html to a file.
-    html_file = open("webpage.html", 'w')
+    html_file = open("webpage.html", 'wb')
     html_file.write(html)
     html_file.close()
    
@@ -554,26 +568,28 @@ def get_nrlstats_season_links(url, year):
         #print div['class']
         if 'm_nrl' not in div['class'] and 'm_5' not in div['class']:
             continue
-        print div['class']
+        print(div['class'])
         match_divs.append(div)
     
     # Extract the details from each match div.
     for match_div in match_divs:
-        print match_div
+        #print(match_div)
+        
         divs = match_div.find_all('div')
         for div in divs:
             #print div['class']
             # The heading of each table, which names the round.
             if 'm_h' in div['class']:
-                round = div.span.string
+                round = div.string # Was div.span.string
             # The contents of each table.
             if 'm_b' in div['class']:
                 rows = div.find_all('tr')
                 # Each row (except the heading row) contains a game.
                 for row in rows[1:]:
+                    print(row)
+                    
                     cols = row.find_all('td')
                     date = cols[0].string.replace(' ', '_')
-                    #print date
                     teams = cols[1].string.split('v')
                     team_names = []
                     for team in teams:
@@ -586,13 +602,17 @@ def get_nrlstats_season_links(url, year):
                     status = cols[3]
                     report_links = cols[4]
                     
-                    print "Team names:", team_names
+                    print("Date:", date)
+                    print("Team names:", team_names)
+                    print("Match link:", match_link)
+                    print("Score:", score)
+                    print("Status:", status)
                     
-                    
+                    #continue
                     
                     # Extract the match figures from the teams link.
-                    base_url = ""                
-                    base_url = "http://live.nrlstats.com"
+                    #base_url = ""                
+                    #base_url = "http://live.nrlstats.com"
                     match_url = base_url + match_link
                     
                     
@@ -604,31 +624,42 @@ def get_nrlstats_season_links(url, year):
                     
                 #print rows[0]
         #print divs
-
+        #return
     return
         
 def extract_nrlstats_season(year):
     """
     Extracts the NRL stats for a given season (year).
     """
-    season_url = nrlstats_form_season_url(year)
-    print "Season URL:", season_url
+    
+    if year == 2007:
+        base_url = "http://web.archive.org/web/20080718185646/http://www.nrlstats.com/season2007/"
+    elif year == 2008:
+        base_url = "http://web.archive.org/web/20090916203853/http://live.nrlstats.com/"
+    elif year == 2015:
+        base_url = "http://live.nrlstats.com"
+    else:
+        print("Year not supported.")
+        return
+    
+    season_url = nrlstats_form_season_url(year, base_url)
+    print("Season URL:", season_url)
     
     # Create a directory in which to store the files
     year_dir = os.path.join(os.getcwd(), str(year))
-    print "Year directory:", year_dir
+    print("Year directory:", year_dir)
     old_cwd = os.getcwd()
     if not os.path.exists(year_dir):
         os.mkdir(year_dir)
     os.chdir(year_dir)
     
     # Get the statistics for the season.
-    get_nrlstats_season_links(season_url, year)
+    get_nrlstats_season_links(season_url, year, base_url)
     
     return
     
     box_score_links = get_box_score_links(date_url)
-    print "Found box score links:", box_score_links
+    print("Found box score links:", box_score_links)
 
         
 if __name__ == "__main__":
@@ -640,10 +671,10 @@ if __name__ == "__main__":
 
     #extract_pbp_data_from_url("http://www.basketball-reference.com/boxscores/pbp/201305140SAS.html")
         
-    
+    #extract_nrlstats_season(2007) # Note: Only the last few matches for 2007 are available.
+    #extract_nrlstats_season(2008)
     #extract_nrlstats_season(2013)
-    extract_nrlstats_season(2007)
-    #extract_nrlstats_season(2015)
+    extract_nrlstats_season(2015)
         
     #start_date = datetime.date(2013, 5, 14)
     #end_date = datetime.date(2013, 5, 16) # datetime.date.today()
