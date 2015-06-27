@@ -5,7 +5,7 @@ library(RCurl)
 get_player_sub_table <- function(table, team_no) {
   # Find the row at the start of the second team.
   row_num <- -1
-  for (i in seq(1, nrow(table))) {
+  for (i in seq(2, nrow(table))) {
     val <- table[i, 1]
     if (toupper(val) == val) {  # The row is the first one that contains all caps.
       row_num <- i
@@ -14,14 +14,63 @@ get_player_sub_table <- function(table, team_no) {
   }
   
   # Extract a sub-table finishing or starting with the found row.
-  if (team_no == 0) {
+  if (team_no == 1) {
     sub_table <- table[1:(row_num-1), ]
   }
   else {
-    sub_table <- table[(row_num+1):nrow(table), ]
+    sub_table <- table[(row_num):nrow(table), ]
   }
   return(sub_table)
 }
+
+get_str_numbers <- function(string, index=NULL) {
+  # Split on one or more ("+") on-digits ("[^[:digit:]]").
+  strings <- strsplit(string, "[^[:digit:]]+")[[1]]
+  # If there is a match at the start of the string, strsplit returns "" as the 
+  # first element. Remove it if it exists.
+  if (strings[1] == "") {
+    strings <- strings[-1]
+  }
+  if (!is.null(index)) {
+    # We need to return a specific element of the string.
+    if (index <= length(strings)) {
+      # The element exists,  so return it.
+      return(strings[index])
+    }
+    else {
+      # The element doesn't exist. Return 0.
+      # This case is meant to deal with the table cells that are empty, and
+      # have been replaced with "0".
+      return("0")
+    }
+  }
+  return(strings)
+}
+
+get_str_numbers_and_words <- function(string, index=NULL) {
+  # Split on one or more ("+") on-digits ("[^[:digit:]]").
+  strings <- strsplit(string, "[^[:alnum:]]+")[[1]]
+  # If there is a match at the start of the string, strsplit returns "" as the 
+  # first element. Remove it if it exists.
+  if (strings[1] == "") {
+    strings <- strings[-1]
+  }
+  if (!is.null(index)) {
+    # We need to return a specific element of the string.
+    if (index <= length(strings)) {
+      # The element exists,  so return it.
+      return(strings[index])
+    }
+    else {
+      # The element doesn't exist. Return 0.
+      # This case is meant to deal with the table cells that are empty, and
+      # have been replaced with "0".
+      return("0")
+    }
+  }
+  return(strings)
+}
+
 
 # Gets the team data for either the whole match, 1st half, or 2nd half.
 get_player_data <- function(match_tables, period, team_no) {
@@ -78,96 +127,110 @@ get_player_data <- function(match_tables, period, team_no) {
   }
   
   if (team_no == 1) {
-    team_col_no = 1
+    team_col_no <- 1
   }
   else if (team_no == 2) {
-    team_col_no = 3
+    team_col_no <- 3
   }
-  
-  # Get the summary table just so we can get the number of players in the team.
-  summary_table <- get_player_sub_table(match_tables[[summary_table_num]], team_no)
-  
-  n_rows <- nrow(summary_table)
-  player_data <- data.frame(
-    date=character(n_rows),
-    time=character(n_rows),
-    round=character(n_rows),
-    team=character(n_rows),
-    period=character(n_rows),
-    name=character(n_rows),
-    number=character(n_rows),
-    position=character(n_rows),
-    mins=numeric(n_rows),
-    tries=numeric(n_rows),
-    try_assists=numeric(n_rows),
-    conversions=character(n_rows), # Numeric
-    conversion_attempts=character(n_rows), # Numeric
-    penalty_goals=numeric(n_rows),
-    field_goals=numeric(n_rows),
-    total_points=numeric(n_rows),
-    receives=numeric(n_rows),
-    total_runs=character(n_rows), # Change to numeric
-    total_runs_metres=character(n_rows), # Change to numeric
-    hitups=character(n_rows), # Change to numeric
-    hitups_metres=character(n_rows), # Change to numeric
-    runs=character(n_rows), # Change to numeric
-    runs_metres=character(n_rows), # Change to numeric
-    dummy_half_runs=character(n_rows), # Change to numeric
-    dummy_half_runs_metres=character(n_rows), # Change to numeric
-    first_receiver_runs=character(n_rows), # Change to numeric
-    first_receiver_runs_metres=character(n_rows), # Change to numeric
-    ruck_runs=character(n_rows), # Change to numeric
-    ruck_runs_metres=character(n_rows), # Change to numeric
-    kick_return_runs=character(n_rows), # Change to numeric
-    kick_return_runs_metres=character(n_rows), # Change to numeric
-    tackle_breaks=numeric(n_rows),
-    tackles=numeric(n_rows),
-    one_on_one_tackles=character(n_rows), # Change to numeric
-    ineffective_tackles=character(n_rows), # Change to numeric
-    missed_tackles=numeric(n_rows),
-    offloads=numeric(n_rows),
-    line_breaks=numeric(n_rows),
-    line_break_assists=numeric(n_rows),
-    errors=numeric(n_rows),
-    penalties_conceded=numeric(n_rows),
-    kicks=character(n_rows), # Make numeric
-    kicks_metres=character(n_rows),
-    forty_twenty_kicks=character(n_rows),
-    stringsAsFactors=FALSE
-  )
   
   summary_table <- get_player_sub_table(match_tables[[summary_table_num]], team_no)
   points_table <- get_player_sub_table(match_tables[[points_table_num]], team_no)
   runs_table <- get_player_sub_table(match_tables[[runs_table_num]], team_no)
   tackles_table <- get_player_sub_table(match_tables[[tackles_table_num]], team_no)
   kicks_table <- get_player_sub_table(match_tables[[kicks_table_num]], team_no)
+  # Remove the heading row from each table.
+  summary_table <- summary_table[-1,]
+  points_table <- points_table[-1,]
+  runs_table <- runs_table[-1,]
+  tackles_table <- tackles_table[-1,]
+  kicks_table <- kicks_table[-1,]
+  
+  n_rows <- nrow(summary_table)
+  player_data <- data.frame(
+    date=character(n_rows),
+    time=character(n_rows),
+    round=character(n_rows),
+    period=character(n_rows),
+    team=character(n_rows),
+    name=character(n_rows),
+    number=character(n_rows),
+    position=character(n_rows),
+    mins=numeric(n_rows),
+    tries=numeric(n_rows),
+    try_assists=numeric(n_rows),
+    conversions=numeric(n_rows),
+    conversion_attempts=numeric(n_rows),
+    penalty_goals=numeric(n_rows),
+    field_goals=numeric(n_rows),
+    total_points=numeric(n_rows),
+    receives=numeric(n_rows),
+    total_runs=numeric(n_rows),
+    total_runs_metres=numeric(n_rows),
+    hitups=numeric(n_rows),
+    hitups_metres=numeric(n_rows),
+    runs=numeric(n_rows),
+    runs_metres=numeric(n_rows),
+    dummy_half_runs=numeric(n_rows),
+    dummy_half_runs_metres=numeric(n_rows),
+    first_receiver_runs=numeric(n_rows),
+    first_receiver_runs_metres=numeric(n_rows),
+    ruck_runs=numeric(n_rows),
+    ruck_runs_metres=numeric(n_rows),
+    kick_return_runs=numeric(n_rows),
+    kick_return_runs_metres=numeric(n_rows),
+    tackle_breaks=numeric(n_rows),
+    tackles=numeric(n_rows),
+    one_on_one_tackles=numeric(n_rows),
+    ineffective_tackles=numeric(n_rows),
+    missed_tackles=numeric(n_rows),
+    offloads=numeric(n_rows),
+    line_breaks=numeric(n_rows),
+    line_break_assists=numeric(n_rows),
+    errors=numeric(n_rows),
+    penalties_conceded=numeric(n_rows),
+    kicks=numeric(n_rows),
+    kicks_metres=numeric(n_rows),
+    forty_twenty_kicks=numeric(n_rows),
+    stringsAsFactors=FALSE
+  )
+  
+  
+  # Loop over the rows (one row per player).
   for (i in seq(1:nrow(summary_table))) {
-    player_data$name[i] <- summary_table[i, 1]
-    player_data$number[i] <- summary_table[i, 1]
+    player_data$date[i] <- match_tables[[3]][1, 1]
+    player_data$time[i] <- match_tables[[3]][1, 2]
+    player_data$round[i] <- get_str_numbers(match_tables[[3]][1, 3], 1)
+    player_data$period[i] <- period
+    player_data$team[i] <- match_tables[[2]][1, team_col_no]
+    
+    number_names <- get_str_numbers_and_words(summary_table[i, 1])
+    # Paste together all the words to form the name.
+    player_data$name[i] <- paste(number_names[2:length(number_names)], collapse=" ")
+    player_data$number[i] <- number_names[1]
     player_data$position[i] <- summary_table[i, 2]
     player_data$mins[i] <- summary_table[i, 3]
     player_data$tries[i] <- points_table[i, 4]
     player_data$try_assists[i] <- summary_table[i, 6]
-    player_data$conversions[i] <- points_table[i, 5]
-    player_data$conversion_attempts[i] <- points_table[i, 5]
+    player_data$conversions[i] <- get_str_numbers(points_table[i, 5], 1)
+    player_data$conversion_attempts[i] <- get_str_numbers(points_table[i, 5], 2)
     player_data$penalty_goals[i] <- points_table[i, 6]
     player_data$field_goals[i] <- points_table[i, 7]
     player_data$total_points[i] <- points_table[i, 8]
     player_data$receives[i] <- summary_table[i, 4]
-    player_data$total_runs[i] <- runs_table[i, 4]
-    player_data$total_runs_metres[i] <- runs_table[i, 4]
-    player_data$hitups[i] <- runs_table[i, 5]
-    player_data$hitups_metres[i] <- runs_table[i, 5]
-    player_data$runs[i] <- runs_table[i, 6]
-    player_data$runs_metres[i] <- runs_table[i, 6]
-    player_data$dummy_half_runs[i] <- runs_table[i, 7]
-    player_data$dummy_half_runs_metres[i] <- runs_table[i, 7]
-    player_data$first_receiver_runs[i] <- runs_table[i, 8]
-    player_data$first_receiver_runs_metres[i] <- runs_table[i, 8]
-    player_data$ruck_runs[i] <- runs_table[i, 9]
-    player_data$ruck_runs_metres[i] <- runs_table[i, 9]
-    player_data$kick_return_runs[i] <- runs_table[i, 10]
-    player_data$kick_return_runs_metres[i] <- runs_table[i, 10]
+    player_data$total_runs[i] <- get_str_numbers(runs_table[i, 4], 1)
+    player_data$total_runs_metres[i] <- get_str_numbers(runs_table[i, 4], 2)
+    player_data$hitups[i] <- get_str_numbers(runs_table[i, 5], 1)
+    player_data$hitups_metres[i] <- get_str_numbers(runs_table[i, 5], 2)
+    player_data$runs[i] <- get_str_numbers(runs_table[i, 6], 1)
+    player_data$runs_metres[i] <- get_str_numbers(runs_table[i, 6], 2)
+    player_data$dummy_half_runs[i] <- get_str_numbers(runs_table[i, 7], 1)
+    player_data$dummy_half_runs_metres[i] <- get_str_numbers(runs_table[i, 7], 2)
+    player_data$first_receiver_runs[i] <- get_str_numbers(runs_table[i, 8], 1)
+    player_data$first_receiver_runs_metres[i] <- get_str_numbers(runs_table[i, 8], 2)
+    player_data$ruck_runs[i] <- get_str_numbers(runs_table[i, 9], 1)
+    player_data$ruck_runs_metres[i] <- get_str_numbers(runs_table[i, 9], 2)
+    player_data$kick_return_runs[i] <- get_str_numbers(runs_table[i, 10], 1)
+    player_data$kick_return_runs_metres[i] <- get_str_numbers(runs_table[i, 10], 2)
     player_data$tackle_breaks[i] <- summary_table[i, 7]
     player_data$tackles[i] <- tackles_table[i, 4]
     player_data$one_on_one_tackles[i] <- tackles_table[i, 5]
@@ -179,7 +242,7 @@ get_player_data <- function(match_tables, period, team_no) {
     player_data$errors[i] <- summary_table[i, 12]
     player_data$penalties_conceded[i] <- summary_table[i, 13]
     player_data$kicks[i] <- kicks_table[i, 4]
-    player_data$kicks_metres[i] <- kicks_table[i, 5]
+    player_data$kicks_metres[i] <- get_str_numbers(kicks_table[i, 5], 1)
     player_data$forty_twenty_kicks[i] <- kicks_table[i, 6]
   }
   
@@ -222,121 +285,125 @@ get_team_data <- function(match_tables, period, team_no) {
     date=character(n_rows),
     time=character(n_rows),
     round=character(n_rows),
-    team=character(n_rows),
     period=character(n_rows),
+    team=character(n_rows),
     score=numeric(n_rows),
-    tries=character(n_rows), # Change to numeric
+    tries=numeric(n_rows),
     try_assists=numeric(n_rows),
-    conversions=character(n_rows), # Change to numeric
-    penalty_goals=character(n_rows), # Change to numeric
-    field_goals=character(n_rows), # Change to numeric
-    sin_bins=character(n_rows), # Change to numeric
-    send_offs=character(n_rows), # Change to numeric
-    penalties=character(n_rows), # Change to numeric
-    scrums=character(n_rows), # Change to numeric
-    sets=character(n_rows), # Change to numeric
-    completions=character(n_rows), # Change to numeric
-    total_runs=character(n_rows), # Change to numeric
-    total_runs_metres=character(n_rows), # Change to numeric
-    hitups=character(n_rows), # Change to numeric
-    hitups_metres=character(n_rows), # Change to numeric
-    runs=character(n_rows), # Change to numeric
-    runs_metres=character(n_rows), # Change to numeric
-    dummy_half_runs=character(n_rows), # Change to numeric
-    dummy_half_runs_metres=character(n_rows), # Change to numeric
-    first_receiver_runs=character(n_rows), # Change to numeric
-    first_receiver_runs_metres=character(n_rows), # Change to numeric
-    ruck_runs=character(n_rows), # Change to numeric
-    ruck_runs_metres=character(n_rows), # Change to numeric
-    kick_return_runs=character(n_rows), # Change to numeric
-    kick_return_runs_metres=character(n_rows), # Change to numeric
-    total_runs_in_general_play=character(n_rows), # Change to numeric
-    total_runs_in_general_play_metres=character(n_rows), # Change to numeric
+    conversions=numeric(n_rows),
+    conversion_attempts=numeric(n_rows),
+    penalty_goals=numeric(n_rows),
+    field_goals=numeric(n_rows),
+    sin_bins=numeric(n_rows),
+    send_offs=numeric(n_rows),
+    penalties=numeric(n_rows),
+    scrums=numeric(n_rows),
+    sets=numeric(n_rows),
+    completions=numeric(n_rows),
+    total_runs=numeric(n_rows),
+    total_runs_metres=numeric(n_rows),
+    hitups=numeric(n_rows),
+    hitups_metres=numeric(n_rows),
+    runs=numeric(n_rows),
+    runs_metres=numeric(n_rows),
+    dummy_half_runs=numeric(n_rows),
+    dummy_half_runs_metres=numeric(n_rows),
+    first_receiver_runs=numeric(n_rows),
+    first_receiver_runs_metres=numeric(n_rows),
+    ruck_runs=numeric(n_rows),
+    ruck_runs_metres=numeric(n_rows),
+    kick_return_runs=numeric(n_rows),
+    kick_return_runs_metres=numeric(n_rows),
+    total_runs_in_general_play=numeric(n_rows),
+    total_runs_in_general_play_metres=numeric(n_rows),
     line_breaks=numeric(n_rows),
-    line_break_assists=character(n_rows), # Change to numeric
+    line_break_assists=numeric(n_rows),
     tackle_breaks=numeric(n_rows),
     receives=numeric(n_rows),
     tackles=numeric(n_rows),
-    one_on_one_tackles=character(n_rows), # Change to numeric
-    ineffective_tackles=character(n_rows), # Change to numeric
+    one_on_one_tackles=numeric(n_rows),
+    ineffective_tackles=numeric(n_rows),
     missed_tackles=numeric(n_rows),
     offloads=numeric(n_rows),
     errors=numeric(n_rows),
-    kicks=character(n_rows), # Make numeric
-    kicks_metres=character(n_rows),
-    forty_twenty_kicks=character(n_rows),
-    line_dropouts=character(n_rows),
-    play_the_balls_total=character(n_rows),
-    play_the_balls_slow=character(n_rows),
-    play_the_balls_neutral=character(n_rows),
-    play_the_balls_fast=character(n_rows),
-    possession_percent=character(n_rows),
-    used_plays=character(n_rows),
-    unused_plays=character(n_rows),
-    possession_efficiency_percent=character(n_rows),
+    kicks=numeric(n_rows),
+    kicks_metres=numeric(n_rows),
+    forty_twenty_kicks=numeric(n_rows),
+    line_dropouts=numeric(n_rows),
+    play_the_balls_total=numeric(n_rows),
+    play_the_balls_slow=numeric(n_rows),
+    play_the_balls_neutral=numeric(n_rows),
+    play_the_balls_fast=numeric(n_rows),
+    possession_percent=numeric(n_rows),
+    used_plays=numeric(n_rows),
+    unused_plays=numeric(n_rows),
+    possession_efficiency_percent=numeric(n_rows),
     stringsAsFactors=FALSE
   )
   
-  # This data is in table 3, but seems to be missing from the table. Its probably considered heading.
-  #team_data$date[n_rows] <- colcolnames(names(match_tables[[2]])[team_col_no]
-  #team_data$time[n_rows] <- colnames(match_tables[[2]])[team_col_no]
-  #team_data$round[n_rows] <- colnames(match_tables[[2]])[team_col_no]
+  team_data$date[n_rows] <- match_tables[[3]][1, 1]
+  team_data$time[n_rows] <- match_tables[[3]][1, 2]
+  team_data$round[n_rows] <- get_str_numbers(match_tables[[3]][1, 3], 1)
   team_data$period[n_rows] <- period
-  team_data$team[n_rows] <- colnames(match_tables[[2]])[team_col_no]
+  team_data$team[n_rows] <- match_tables[[2]][1, team_col_no]
   
   # Overall team stats.
   table_num <- summary_table_num
-  team_data$score[n_rows] <- match_tables[[table_num]][1, team_col_no]
-  team_data$tries[n_rows] <- match_tables[[table_num]][2, team_col_no]
-  team_data$conversions[n_rows] <- match_tables[[table_num]][3, team_col_no]
-  team_data$penalty_goals[n_rows] <- match_tables[[table_num]][4, team_col_no]
-  team_data$field_goals[n_rows] <- match_tables[[table_num]][5, team_col_no]
-  team_data$sin_bins[n_rows] <- match_tables[[table_num]][6, team_col_no]
-  team_data$send_offs[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$penalties[n_rows] <- match_tables[[table_num]][8, team_col_no]
-  team_data$scrums[n_rows] <- match_tables[[table_num]][9, team_col_no]
-  team_data$sets[n_rows] <- match_tables[[table_num]][10, team_col_no]
-  team_data$completions[n_rows] <- match_tables[[table_num]][10, team_col_no] # Extract from sets
-  team_data$total_runs[n_rows] <- match_tables[[table_num]][11, team_col_no]
-  team_data$total_runs_metres[n_rows] <- match_tables[[table_num]][11, team_col_no] # Extract from runs
-  team_data$line_breaks[n_rows] <- match_tables[[table_num]][12, team_col_no]
-  team_data$tackles[n_rows] <- match_tables[[table_num]][13, team_col_no]
-  team_data$missed_tackles[n_rows] <- match_tables[[table_num]][14, team_col_no]
-  team_data$offloads[n_rows] <- match_tables[[table_num]][15, team_col_no]
-  team_data$errors[n_rows] <- match_tables[[table_num]][16, team_col_no]
+  team_data$score[n_rows] <- match_tables[[table_num]][2, team_col_no]
+  team_data$tries[n_rows] <- get_str_numbers(match_tables[[table_num]][3, team_col_no], 1)
+  team_data$conversions[n_rows] <- get_str_numbers(match_tables[[table_num]][4, team_col_no], 1)
+  team_data$conversion_attempts[n_rows] <- get_str_numbers(match_tables[[table_num]][4, team_col_no], 2)
+  team_data$penalty_goals[n_rows] <- match_tables[[table_num]][5, team_col_no]
+  team_data$field_goals[n_rows] <- match_tables[[table_num]][6, team_col_no]
+  team_data$sin_bins[n_rows] <- match_tables[[table_num]][7, team_col_no]
+  team_data$send_offs[n_rows] <- match_tables[[table_num]][8, team_col_no]
+  team_data$penalties[n_rows] <- match_tables[[table_num]][9, team_col_no]
+  team_data$scrums[n_rows] <- match_tables[[table_num]][10, team_col_no]
+  team_data$sets[n_rows] <- get_str_numbers(match_tables[[table_num]][11, team_col_no], 2)
+  team_data$completions[n_rows] <- get_str_numbers(match_tables[[table_num]][11, team_col_no], 1)
+  # Runs
+  team_data$line_breaks[n_rows] <- match_tables[[table_num]][13, team_col_no]
+  team_data$tackles[n_rows] <- match_tables[[table_num]][14, team_col_no]
+  team_data$missed_tackles[n_rows] <- match_tables[[table_num]][15, team_col_no]
+  team_data$offloads[n_rows] <- match_tables[[table_num]][16, team_col_no]
+  team_data$errors[n_rows] <- match_tables[[table_num]][17, team_col_no]
   table_num <- team_stats_table_num
-  team_data$try_assists[n_rows] <- match_tables[[table_num]][1, team_col_no]
-  team_data$line_break_assists[n_rows] <- match_tables[[table_num]][3, team_col_no] # Extract LBA
-  team_data$receives[n_rows] <- match_tables[[table_num]][4, team_col_no]
-  team_data$one_on_one_tackles[n_rows] <- match_tables[[table_num]][5, team_col_no] # Extract
-  team_data$ineffective_tackles[n_rows] <- match_tables[[table_num]][5, team_col_no] # Extract
-  team_data$tackle_breaks[n_rows] <- match_tables[[table_num]][6, team_col_no]
-  team_data$hitups[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$hitups_metres[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$runs[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$runs_metres[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$dummy_half_runs[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$dummy_half_runs_metres[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$first_receiver_runs[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$first_receiver_runs_metres[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$ruck_runs[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$ruck_runs_metres[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$kick_return_runs[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$kick_return_runs_metres[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$total_runs_in_general_play[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$total_runs_in_general_play_metres[n_rows] <- match_tables[[table_num]][7, team_col_no]
-  team_data$kicks[n_rows] <- match_tables[[table_num]][8, team_col_no]
-  team_data$kicks_metres[n_rows] <- match_tables[[table_num]][8, team_col_no]
-  team_data$forty_twenty_kicks[n_rows] <- match_tables[[table_num]][8, team_col_no]
-  team_data$line_dropouts[n_rows] <- match_tables[[table_num]][8, team_col_no]
-  team_data$play_the_balls_total[n_rows] <- match_tables[[table_num]][9, team_col_no]
-  team_data$play_the_balls_slow[n_rows] <- match_tables[[table_num]][9, team_col_no]
-  team_data$play_the_balls_neutral[n_rows] <- match_tables[[table_num]][9, team_col_no]
-  team_data$play_the_balls_fast[n_rows] <- match_tables[[table_num]][9, team_col_no]
-  team_data$possession_percent[n_rows] <- match_tables[[table_num]][10, team_col_no]
-  team_data$used_plays[n_rows] <- match_tables[[table_num]][10, team_col_no]
-  team_data$unused_plays[n_rows] <- match_tables[[table_num]][10, team_col_no]
-  team_data$possession_efficiency_percent[n_rows] <- match_tables[[table_num]][10, team_col_no]
+  team_data$try_assists[n_rows] <- match_tables[[table_num]][2, team_col_no]
+  team_data$line_break_assists[n_rows] <- match_tables[[table_num]][4, team_col_no] # Extract LBA
+  team_data$receives[n_rows] <- match_tables[[table_num]][5, team_col_no]
+  team_data$one_on_one_tackles[n_rows] <- match_tables[[table_num]][6, team_col_no] # Extract
+  team_data$ineffective_tackles[n_rows] <- match_tables[[table_num]][6, team_col_no] # Extract
+  team_data$tackle_breaks[n_rows] <- match_tables[[table_num]][7, team_col_no]
+  # Runs
+  team_data$total_runs[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 1)
+  team_data$total_runs_metres[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 2)
+  team_data$hitups[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 3)
+  team_data$hitups_metres[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 4)
+  team_data$runs[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 5)
+  team_data$runs_metres[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 6)
+  team_data$dummy_half_runs[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 7)
+  team_data$dummy_half_runs_metres[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 8)
+  team_data$first_receiver_runs[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 9)
+  team_data$first_receiver_runs_metres[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 10)
+  team_data$ruck_runs[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 11)
+  team_data$ruck_runs_metres[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 12)
+  team_data$kick_return_runs[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 13)
+  team_data$kick_return_runs_metres[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 14)
+  team_data$total_runs_in_general_play[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 15)
+  team_data$total_runs_in_general_play_metres[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 16)
+  # Kicks
+  team_data$kicks[n_rows] <- match_tables[[table_num]][9, team_col_no]
+  team_data$kicks_metres[n_rows] <- match_tables[[table_num]][9, team_col_no]
+  team_data$forty_twenty_kicks[n_rows] <- match_tables[[table_num]][9, team_col_no]
+  team_data$line_dropouts[n_rows] <- match_tables[[table_num]][9, team_col_no]
+  team_data$play_the_balls_total[n_rows] <- match_tables[[table_num]][10, team_col_no]
+  team_data$play_the_balls_slow[n_rows] <- match_tables[[table_num]][10, team_col_no]
+  team_data$play_the_balls_neutral[n_rows] <- match_tables[[table_num]][10, team_col_no]
+  team_data$play_the_balls_fast[n_rows] <- match_tables[[table_num]][10, team_col_no]
+  team_data$possession_percent[n_rows] <- match_tables[[table_num]][11, team_col_no]
+  team_data$used_plays[n_rows] <- match_tables[[table_num]][11, team_col_no]
+  team_data$unused_plays[n_rows] <- match_tables[[table_num]][11, team_col_no]
+  team_data$possession_efficiency_percent[n_rows] <- match_tables[[table_num]][11, team_col_no]
   
   return(team_data)
 }
@@ -360,18 +427,18 @@ get_match_data <- function(match_tables) {
     )
   
   # This data is in table 3, but seems to be missing from the table. Its probably considered heading.
-  #match_data$date[n_rows] <- colnames(names(match_tables[[2]])[1]
-  #match_data$time[n_rows] <- colnames(match_tables[[2]])[1]
-  #match_data$round[n_rows] <- colnames(match_tables[[2]])[1]
-  match_data$team_1[n_rows] <- colnames(match_tables[[2]])[1]
-  match_data$team_2[n_rows] <- colnames(match_tables[[2]])[3]
-  match_data$team_score_1[n_rows] <- match_tables[[4]][1, 1]
-  match_data$team_score_2[n_rows] <- match_tables[[4]][1, 3]
-  match_data$venue[n_rows] <- match_tables[[3]][1, 1]
-  match_data$weather[n_rows] <- match_tables[[3]][1, 2]
-  match_data$referees[n_rows] <- match_tables[[3]][2, 1]
-  match_data$crowd[n_rows] <- match_tables[[3]][6, 1]
-  match_data$surface[n_rows] <- match_tables[[3]][1, 3]
+  match_data$date[n_rows] <- match_tables[[3]][1, 1]
+  match_data$time[n_rows] <- match_tables[[3]][1, 2]
+  match_data$round[n_rows] <- get_str_numbers(match_tables[[3]][1, 3], 1)
+  match_data$team_1[n_rows] <- match_tables[[2]][1, 1]
+  match_data$team_2[n_rows] <- match_tables[[2]][1, 3]
+  match_data$team_score_1[n_rows] <- match_tables[[2]][2, 1]
+  match_data$team_score_2[n_rows] <- match_tables[[2]][2, 3]
+  match_data$venue[n_rows] <- match_tables[[3]][2, 1]
+  match_data$weather[n_rows] <- match_tables[[3]][2, 2]
+  match_data$referees[n_rows] <- match_tables[[3]][3, 1]
+  match_data$crowd[n_rows] <- match_tables[[3]][7, 1]
+  match_data$surface[n_rows] <- match_tables[[3]][2, 3]
   
   return(match_data)
 }
@@ -391,18 +458,19 @@ process_match_page <- function(match_url) {
   match_html <- gsub("&nbsp;", "0", match_html)
   write(match_html, file="match.html")
   #saveXML(match_html, file="match.html")
-  match_tables <- readHTMLTable(match_html, stringsAsFactors = FALSE, asText=TRUE)
+  match_tables <- readHTMLTable(match_html, header=FALSE, stringsAsFactors = FALSE, asText=TRUE)
   
   # Loop through the match tables.
   # The first table is bogus.
   for (i in seq(2,length(match_tables))) {
     match_table <- match_tables[[i]]
     # Write the table out to a CSV file.
-    write.csv(match_table, paste("match-table_", sprintf("%02d",i), ".csv", sep=""))
+    #write.csv(match_table, paste("match-table_", sprintf("%02d",i), ".csv", sep=""))
   }
   
   # Get the overall match data.
   match_data <- get_match_data(match_tables)
+  write.csv(match_data, paste("match-data-table.csv", sep=""))
   
   # Get the team data for each period.
   team_data_1_match <- get_team_data(match_tables, 0, 1)
@@ -418,9 +486,11 @@ process_match_page <- function(match_url) {
   team_data_2 <- team_data_2_match
   team_data_2 <- rbind(team_data_2, team_data_2_1h)
   team_data_2 <- rbind(team_data_2, team_data_2_2h)
+  team_data <- rbind(team_data_1, team_data_2)
+  write.csv(team_data, paste("team-data-table.csv", sep=""))
   
   # Get the player data for each period.
-  player_data_1_match <- get_player_data(match_tables, 0, 0)
+  player_data_1_match <- get_player_data(match_tables, 0, 1)
   player_data_1_1h <- get_player_data(match_tables, 1, 1)
   player_data_1_2h <- get_player_data(match_tables, 2, 1)
   player_data_2_match <- get_player_data(match_tables, 0, 2)
@@ -452,6 +522,10 @@ process_round_table <- function(round_df, round_links_df, base_url) {
     # For each row (match), build a data frame that contains all the information
     # we want to pass on to the next function.
     
+    match_status <- round_df[row_num, "Status"]
+    if (match_status != "Full Time") {
+      next
+    }
     
     match_url <- round_links_df[row_num, "Match"]
     match_url <- paste(base_url, match_url, sep="")
@@ -466,6 +540,15 @@ hrefFun <- function(x){
   xpathSApply(x,'./a',xmlAttrs)  
 }
 
+#string <- "19 (187m)"
+#string <- "25"
+#string <- "5/6 (83%)"
+#string <- "261m"
+string <- "Round: Round 15"
+#string <- "0"
+numbers <- get_str_numbers(string, 1)
+print(numbers)
+
 base_url <- "http://live.nrlstats.com"
 season_url <- paste(base_url, "/nrl/season2015.html", sep="")
 print(season_url)
@@ -479,7 +562,7 @@ round_tables[[1]] <- NULL
 round_tables_links[[1]] <- NULL
 
 # Loop through the round tables.
-for (i in seq(1,length(round_tables))) {
+for (i in seq(2,length(round_tables))) {
   round_table <- round_tables[[i]]
   round_table_links <- round_tables_links[[i]]
   # Write the table out to a CSV file.
