@@ -169,6 +169,7 @@ get_player_data <- function(match_tables, period, team_no) {
     conversions=numeric(n_rows),
     conversion_attempts=numeric(n_rows),
     penalty_goals=numeric(n_rows),
+    penalty_goal_attempts=numeric(n_rows),
     field_goals=numeric(n_rows),
     total_points=numeric(n_rows),
     receives=numeric(n_rows),
@@ -205,7 +206,7 @@ get_player_data <- function(match_tables, period, team_no) {
   # Loop over the rows (one row per player).
   for (i in seq(1:nrow(summary_table))) {
     player_data$date[i] <- get_date_str(match_tables[[3]][1, 1])
-    player_data$time[i] <- match_tables[[3]][1, 2]
+    player_data$time[i] <- unlist(strsplit(match_tables[[3]][1, 2], " "))[4]
     player_data$round[i] <- get_str_numbers(match_tables[[3]][1, 3], 1)
     player_data$period[i] <- period
     player_data$team[i] <- match_tables[[2]][1, team_col_no]
@@ -220,7 +221,8 @@ get_player_data <- function(match_tables, period, team_no) {
     player_data$try_assists[i] <- summary_table[i, 6]
     player_data$conversions[i] <- get_str_numbers(points_table[i, 5], 1)
     player_data$conversion_attempts[i] <- get_str_numbers(points_table[i, 5], 2)
-    player_data$penalty_goals[i] <- points_table[i, 6]
+    player_data$penalty_goals[i] <- get_str_numbers(points_table[i, 6], 1)
+    player_data$penalty_goal_attempts[i] <- get_str_numbers(points_table[i, 6], 2)
     player_data$field_goals[i] <- points_table[i, 7]
     player_data$total_points[i] <- points_table[i, 8]
     player_data$receives[i] <- summary_table[i, 4]
@@ -300,7 +302,9 @@ get_team_data <- function(match_tables, period, team_no) {
     conversions=numeric(n_rows),
     conversion_attempts=numeric(n_rows),
     penalty_goals=numeric(n_rows),
+    penalty_goal_attempts=numeric(n_rows),
     field_goals=numeric(n_rows),
+    field_goal_attempts=numeric(n_rows),
     sin_bins=numeric(n_rows),
     send_offs=numeric(n_rows),
     penalties=numeric(n_rows),
@@ -349,7 +353,7 @@ get_team_data <- function(match_tables, period, team_no) {
   )
   
   team_data$date[n_rows] <- get_date_str(match_tables[[3]][1, 1])
-  team_data$time[n_rows] <- match_tables[[3]][1, 2]
+  team_data$time[n_rows] <- unlist(strsplit(match_tables[[3]][1, 2], " "))[4]
   team_data$round[n_rows] <- get_str_numbers(match_tables[[3]][1, 3], 1)
   team_data$period[n_rows] <- period
   team_data$team[n_rows] <- match_tables[[2]][1, team_col_no]
@@ -360,8 +364,10 @@ get_team_data <- function(match_tables, period, team_no) {
   team_data$tries[n_rows] <- get_str_numbers(match_tables[[table_num]][3, team_col_no], 1)
   team_data$conversions[n_rows] <- get_str_numbers(match_tables[[table_num]][4, team_col_no], 1)
   team_data$conversion_attempts[n_rows] <- get_str_numbers(match_tables[[table_num]][4, team_col_no], 2)
-  team_data$penalty_goals[n_rows] <- match_tables[[table_num]][5, team_col_no]
-  team_data$field_goals[n_rows] <- match_tables[[table_num]][6, team_col_no]
+  team_data$penalty_goals[n_rows] <- get_str_numbers(match_tables[[table_num]][5, team_col_no], 1)
+  team_data$penalty_goal_attempts[n_rows] <- get_str_numbers(match_tables[[table_num]][5, team_col_no], 2)
+  team_data$field_goals[n_rows] <- get_str_numbers(match_tables[[table_num]][6, team_col_no], 1)
+  team_data$field_goal_attempts[n_rows] <- get_str_numbers(match_tables[[table_num]][6, team_col_no], 2)
   team_data$sin_bins[n_rows] <- match_tables[[table_num]][7, team_col_no]
   team_data$send_offs[n_rows] <- match_tables[[table_num]][8, team_col_no]
   team_data$penalties[n_rows] <- match_tables[[table_num]][9, team_col_no]
@@ -376,10 +382,13 @@ get_team_data <- function(match_tables, period, team_no) {
   team_data$errors[n_rows] <- match_tables[[table_num]][17, team_col_no]
   table_num <- team_stats_table_num
   team_data$try_assists[n_rows] <- match_tables[[table_num]][2, team_col_no]
-  team_data$line_break_assists[n_rows] <- match_tables[[table_num]][4, team_col_no] # Extract LBA
+  #team_data$line_break_assists[n_rows] <- match_tables[[table_num]][4, team_col_no]
+  team_data$line_break_assists[n_rows] <- get_str_numbers(match_tables[[table_num]][4, team_col_no], 2)
   team_data$receives[n_rows] <- match_tables[[table_num]][5, team_col_no]
-  team_data$one_on_one_tackles[n_rows] <- match_tables[[table_num]][6, team_col_no] # Extract
-  team_data$ineffective_tackles[n_rows] <- match_tables[[table_num]][6, team_col_no] # Extract
+  #team_data$one_on_one_tackles[n_rows] <- match_tables[[table_num]][6, team_col_no]
+  team_data$one_on_one_tackles[n_rows] <- get_str_numbers(match_tables[[table_num]][6, team_col_no], 2)
+  #team_data$ineffective_tackles[n_rows] <- match_tables[[table_num]][6, team_col_no]
+  team_data$ineffective_tackles[n_rows] <- get_str_numbers(match_tables[[table_num]][6, team_col_no], 3)
   team_data$tackle_breaks[n_rows] <- match_tables[[table_num]][7, team_col_no]
   # Runs
   team_data$total_runs[n_rows] <- get_str_numbers(match_tables[[table_num]][8, team_col_no], 1)
@@ -420,7 +429,7 @@ get_match_data <- function(match_tables) {
   match_data <- data.frame(
     date=character(n_rows),
     time=character(n_rows),
-    round=character(n_rows),
+    round=numeric(n_rows),
     team_1=character(n_rows),
     team_2=character(n_rows),
     team_score_1=numeric(n_rows),
@@ -428,24 +437,24 @@ get_match_data <- function(match_tables) {
     venue=character(n_rows),
     weather=character(n_rows),
     referees=character(n_rows),
-    crowd=character(n_rows), # Change to numeric
+    crowd=numeric(n_rows),
     surface=character(n_rows),
     stringsAsFactors=FALSE
     )
   
   # This data is in table 3, but seems to be missing from the table. Its probably considered heading.
   match_data$date[n_rows] <- get_date_str(match_tables[[3]][1, 1])
-  match_data$time[n_rows] <- match_tables[[3]][1, 2]
+  match_data$time[n_rows] <- unlist(strsplit(match_tables[[3]][1, 2], " "))[4]
   match_data$round[n_rows] <- get_str_numbers(match_tables[[3]][1, 3], 1)
   match_data$team_1[n_rows] <- match_tables[[2]][1, 1]
   match_data$team_2[n_rows] <- match_tables[[2]][1, 3]
   match_data$team_score_1[n_rows] <- match_tables[[2]][2, 1]
   match_data$team_score_2[n_rows] <- match_tables[[2]][2, 3]
-  match_data$venue[n_rows] <- match_tables[[3]][2, 1]
-  match_data$weather[n_rows] <- match_tables[[3]][2, 2]
-  match_data$referees[n_rows] <- match_tables[[3]][3, 1]
-  match_data$crowd[n_rows] <- match_tables[[3]][7, 1]
-  match_data$surface[n_rows] <- match_tables[[3]][2, 3]
+  match_data$venue[n_rows] <- unlist(strsplit(match_tables[[3]][2, 1], " | ", fixed=TRUE))[2]
+  match_data$weather[n_rows] <- unlist(strsplit(match_tables[[3]][2, 2], " | ", fixed=TRUE))[2]
+  match_data$referees[n_rows] <- unlist(strsplit(match_tables[[3]][3, 1], " | ", fixed=TRUE))[2]
+  match_data$crowd[n_rows] <- unlist(strsplit(match_tables[[3]][7, 1], " | ", fixed=TRUE))[2]
+  match_data$surface[n_rows] <- unlist(strsplit(match_tables[[3]][2, 3], " | ", fixed=TRUE))[2]
   
   return(match_data)
 }
@@ -477,7 +486,7 @@ process_match_page <- function(match_url) {
   
   # Get the overall match data.
   match_data <- get_match_data(match_tables)
-  write.csv(match_data, paste("match-data-table.csv", sep=""))
+  write.csv(match_data, paste("match-match-data-table.csv", sep=""))
   
   # Get the team data for each period.
   team_data_1_match <- get_team_data(match_tables, 0, 1)
@@ -494,7 +503,7 @@ process_match_page <- function(match_url) {
   team_data_2 <- rbind(team_data_2, team_data_2_1h)
   team_data_2 <- rbind(team_data_2, team_data_2_2h)
   team_data <- rbind(team_data_1, team_data_2)
-  write.csv(team_data, paste("team-data-table.csv", sep=""))
+  write.csv(team_data, paste("match-team-data-table.csv", sep=""))
   
   # Get the player data for each period.
   player_data_1_match <- get_player_data(match_tables, 0, 1)
@@ -509,9 +518,10 @@ process_match_page <- function(match_url) {
   player_data_2 <- rbind(player_data_2_match, player_data_2_1h)
   player_data_2 <- rbind(player_data_2, player_data_2_2h)
   player_data <- rbind(player_data_1, player_data_2)
-  write.csv(player_data, paste("player-data-table.csv", sep=""))
+  write.csv(player_data, paste("match-player-data-table.csv", sep=""))
   #match_team_data <- get_match_team_data(match_tables)
-  return()
+  
+  return(list(match_data, team_data, player_data))
   
   for (i in seq(1,length(match_team_data))) {
     match_team_data_table <- match_team_data[[i]]
@@ -525,6 +535,11 @@ process_match_page <- function(match_url) {
 # Process one of the tables on the main season page that contains the matches in
 # an individual round.
 process_round_table <- function(round_df, round_links_df, base_url) {
+  
+  round_match_data <- NULL
+  round_team_data <- NULL
+  round_player_data <- NULL
+  
   for (row_num in seq(1, nrow(round_df))) {
     # For each row (match), build a data frame that contains all the information
     # we want to pass on to the next function.
@@ -536,11 +551,31 @@ process_round_table <- function(round_df, round_links_df, base_url) {
     
     match_url <- round_links_df[row_num, "Match"]
     match_url <- paste(base_url, match_url, sep="")
-    process_match_page(match_url)
     
-    return()
+    round_data <- process_match_page(match_url)
+    match_data <- round_data[[1]]
+    team_data <- round_data[[2]]
+    player_data <- round_data[[3]]
+    
+    if (is.null(round_match_data)) {
+      round_match_data <- match_data
+      round_team_data <- team_data
+      round_player_data <- player_data
+    }
+    else {
+      round_match_data <- rbind(round_match_data, match_data)
+      round_team_data <- rbind(round_team_data, team_data)
+      round_player_data <- rbind(round_player_data, player_data)
+    }
+    
+    #return()
   }
+  
+  write.csv(round_match_data, paste("round-match-data-table.csv", sep=""))
+  write.csv(round_team_data, paste("round-team-data-table.csv", sep=""))
+  write.csv(round_player_data, paste("round-player-data-table.csv", sep=""))
 
+  return(list(round_match_data, round_team_data, round_player_data))
 }
 
 hrefFun <- function(x){
@@ -570,14 +605,37 @@ round_tables_links <- readHTMLTable(season_html, elFun = hrefFun, stringsAsFacto
 round_tables[[1]] <- NULL
 round_tables_links[[1]] <- NULL
 
+season_match_data <- NULL
+season_team_data <- NULL
+season_player_data <- NULL
+
 # Loop through the round tables.
-for (i in seq(2,length(round_tables))) {
+for (i in seq(2, 4)){#length(round_tables))) {
   round_table <- round_tables[[i]]
   round_table_links <- round_tables_links[[i]]
   # Write the table out to a CSV file.
   write.csv(round_table, paste("round-table_", sprintf("%02d",i), ".csv", sep=""))
   # Process the round table.
-  process_round_table(round_table, round_table_links, base_url)
+  round_data <- process_round_table(round_table, round_table_links, base_url)
   
-  return()
+  match_data <- round_data[[1]]
+  team_data <- round_data[[2]]
+  player_data <- round_data[[3]]
+  
+  if (is.null(season_match_data)) {
+    season_match_data <- match_data
+    season_team_data <- team_data
+    season_player_data <- player_data
+  }
+  else {
+    season_match_data <- rbind(season_match_data, match_data)
+    season_team_data <- rbind(season_team_data, team_data)
+    season_player_data <- rbind(season_player_data, player_data)
+  }
+  
+  #return()
 }
+
+write.csv(season_match_data, paste("season-match-data-table.csv", sep=""))
+write.csv(season_team_data, paste("season-team-data-table.csv", sep=""))
+write.csv(season_player_data, paste("season-player-data-table.csv", sep=""))
