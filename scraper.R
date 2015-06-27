@@ -71,6 +71,14 @@ get_str_numbers_and_words <- function(string, index=NULL) {
   return(strings)
 }
 
+get_date_str <- function(string) {
+  strings <- unlist(strsplit(string, " "))
+  # Form something like "19/Jun/2015"
+  input_str = paste(strings[4], strings[5], strings[6], sep="/")
+  date_str <- as.Date(input_str, format='%d/%b/%Y')
+  return(format(date_str, format="%Y-%m-%d"))
+}
+
 
 # Gets the team data for either the whole match, 1st half, or 2nd half.
 get_player_data <- function(match_tables, period, team_no) {
@@ -194,10 +202,9 @@ get_player_data <- function(match_tables, period, team_no) {
     stringsAsFactors=FALSE
   )
   
-  
   # Loop over the rows (one row per player).
   for (i in seq(1:nrow(summary_table))) {
-    player_data$date[i] <- match_tables[[3]][1, 1]
+    player_data$date[i] <- get_date_str(match_tables[[3]][1, 1])
     player_data$time[i] <- match_tables[[3]][1, 2]
     player_data$round[i] <- get_str_numbers(match_tables[[3]][1, 3], 1)
     player_data$period[i] <- period
@@ -341,7 +348,7 @@ get_team_data <- function(match_tables, period, team_no) {
     stringsAsFactors=FALSE
   )
   
-  team_data$date[n_rows] <- match_tables[[3]][1, 1]
+  team_data$date[n_rows] <- get_date_str(match_tables[[3]][1, 1])
   team_data$time[n_rows] <- match_tables[[3]][1, 2]
   team_data$round[n_rows] <- get_str_numbers(match_tables[[3]][1, 3], 1)
   team_data$period[n_rows] <- period
@@ -427,7 +434,7 @@ get_match_data <- function(match_tables) {
     )
   
   # This data is in table 3, but seems to be missing from the table. Its probably considered heading.
-  match_data$date[n_rows] <- match_tables[[3]][1, 1]
+  match_data$date[n_rows] <- get_date_str(match_tables[[3]][1, 1])
   match_data$time[n_rows] <- match_tables[[3]][1, 2]
   match_data$round[n_rows] <- get_str_numbers(match_tables[[3]][1, 3], 1)
   match_data$team_1[n_rows] <- match_tables[[2]][1, 1]
@@ -548,6 +555,8 @@ string <- "Round: Round 15"
 #string <- "0"
 numbers <- get_str_numbers(string, 1)
 print(numbers)
+
+date_str <- get_date_str("Date: | Fri 19 Jun 2015")
 
 base_url <- "http://live.nrlstats.com"
 season_url <- paste(base_url, "/nrl/season2015.html", sep="")
