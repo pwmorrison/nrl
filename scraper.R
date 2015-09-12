@@ -81,7 +81,9 @@ get_date_str <- function(string) {
 
 
 # Gets the team data for either the whole match, 1st half, or 2nd half.
-get_player_data <- function(match_tables, period, team_no) {
+get_player_data <- function(match_tables, period, team_no, is_extra_time) {
+  
+  tryCatch({
   
   # Table 10: Stand out players.
   # 11: Summary total. Both teams.
@@ -130,8 +132,26 @@ get_player_data <- function(match_tables, period, team_no) {
     kicks_table_num <- 25
     period <- "2nd_half"
   }
+  else if (period == 3) {
+    # Extra time.
+    summary_table_num <- 28
+    points_table_num <- 29
+    runs_table_num <- 30
+    tackles_table_num <- 31
+    kicks_table_num <- 32
+    period <- "Extra_time"
+  }
   else {
     return()
+  }
+    
+  if (is_extra_time && period != "Extra_time") {
+    # Need to increase the table numbers, to account for the additional extra time tables.
+    summary_table_num <- summary_table_num + 2
+    points_table_num <- points_table_num + 2
+    runs_table_num <- runs_table_num + 2
+    tackles_table_num <- tackles_table_num + 2
+    kicks_table_num <- kicks_table_num + 2
   }
   
   if (team_no == 1) {
@@ -171,6 +191,7 @@ get_player_data <- function(match_tables, period, team_no) {
     penalty_goals=numeric(n_rows),
     penalty_goal_attempts=numeric(n_rows),
     field_goals=numeric(n_rows),
+    field_goal_attempts=numeric(n_rows),
     total_points=numeric(n_rows),
     receives=numeric(n_rows),
     total_runs=numeric(n_rows),
@@ -223,7 +244,8 @@ get_player_data <- function(match_tables, period, team_no) {
     player_data$conversion_attempts[i] <- get_str_numbers(points_table[i, 5], 2)
     player_data$penalty_goals[i] <- get_str_numbers(points_table[i, 6], 1)
     player_data$penalty_goal_attempts[i] <- get_str_numbers(points_table[i, 6], 2)
-    player_data$field_goals[i] <- points_table[i, 7]
+    player_data$field_goals[i] <- get_str_numbers(points_table[i, 7], 1)
+    player_data$field_goal_attempts[i] <- get_str_numbers(points_table[i, 7], 2)
     player_data$total_points[i] <- points_table[i, 8]
     player_data$receives[i] <- summary_table[i, 4]
     player_data$total_runs[i] <- get_str_numbers(runs_table[i, 4], 1)
@@ -255,11 +277,24 @@ get_player_data <- function(match_tables, period, team_no) {
     player_data$forty_twenty_kicks[i] <- kicks_table[i, 6]
   }
   
+  },
+  warning = function(war) {
+    print(paste("Warning:", war))
+  },
+  error = function(err) {
+    print(paste("Error:", err))
+  },
+  finally = {
+    
+    
+  })
+  
+  
   return(player_data)
 }
 
 # Gets the team data for either the whole match, 1st half, or 2nd half.
-get_team_data <- function(match_tables, period, team_no) {
+get_team_data <- function(match_tables, period, team_no, is_extra_time) {
   
   if (period == 0) {
     # Whole match.
@@ -279,8 +314,19 @@ get_team_data <- function(match_tables, period, team_no) {
     team_stats_table_num <- 9
     period <- "2nd_half"
   }
+  else if (period == 3) {
+    # Extra time.
+    summary_table_num <- 7
+    team_stats_table_num <- 11
+    period <- "Extra_time"
+  }
   else {
     return()
+  }
+  
+  if (is_extra_time && period != "Extra_time") {
+    # Need to increase the table numbers, to account for the additional extra time tables.
+    team_stats_table_num <- team_stats_table_num + 1
   }
   
   if (team_no == 1) {
@@ -476,48 +522,85 @@ process_match_page <- function(match_url) {
   #saveXML(match_html, file="match.html")
   match_tables <- readHTMLTable(match_html, header=FALSE, stringsAsFactors = FALSE, asText=TRUE)
   
+  is_extra_time <- FALSE
+  if (length(match_tables) == 35) {
+    is_extra_time <-  TRUE
+  }
+  
   # Loop through the match tables.
   # The first table is bogus.
   for (i in seq(2,length(match_tables))) {
     match_table <- match_tables[[i]]
     # Write the table out to a CSV file.
-    #write.csv(match_table, paste("match-table_", sprintf("%02d",i), ".csv", sep=""))
+    write.csv(match_table, paste("match-table_", sprintf("%02d",i), ".csv", sep=""))
   }
   
   # Get the overall match data.
-  match_data <- get_match_data(match_tables)
+  result <- tryCatch({
+    match_data <- get_match_data(match_tables)
+  },
+  warning = function(war) {
+    print(paste("Warning:", war))
+  },
+  error = function(err) {
+    print(paste("Error:", err))
+  },
+  finally = {
+    
+    
+  })
   write.csv(match_data, paste("match-match-data-table.csv", sep=""))
   
   # Get the team data for each period.
-  team_data_1_match <- get_team_data(match_tables, 0, 1)
-  team_data_1_1h <- get_team_data(match_tables, 1, 1)
-  team_data_1_2h <- get_team_data(match_tables, 2, 1)
-  team_data_2_match <- get_team_data(match_tables, 0, 2)
-  team_data_2_1h <- get_team_data(match_tables, 1, 2)
-  team_data_2_2h <- get_team_data(match_tables, 2, 2)
+  team_data_1_match <- get_team_data(match_tables, 0, 1, is_extra_time)
+  team_data_1_1h <- get_team_data(match_tables, 1, 1, is_extra_time)
+  team_data_1_2h <- get_team_data(match_tables, 2, 1, is_extra_time)
+  team_data_2_match <- get_team_data(match_tables, 0, 2, is_extra_time)
+  team_data_2_1h <- get_team_data(match_tables, 1, 2, is_extra_time)
+  team_data_2_2h <- get_team_data(match_tables, 2, 2, is_extra_time)
+  if (is_extra_time) {
+    team_data_1_et <- get_team_data(match_tables, 3, 1, is_extra_time)
+    team_data_2_et <- get_team_data(match_tables, 3, 2, is_extra_time)
+  }
   # Merge the team data for the different periods.
   team_data_1 <- team_data_1_match
   team_data_1 <- rbind(team_data_1, team_data_1_1h)
   team_data_1 <- rbind(team_data_1, team_data_1_2h)
+  if (is_extra_time) {
+    team_data_1 <- rbind(team_data_1, team_data_1_et)
+  }
   team_data_2 <- team_data_2_match
   team_data_2 <- rbind(team_data_2, team_data_2_1h)
   team_data_2 <- rbind(team_data_2, team_data_2_2h)
   team_data <- rbind(team_data_1, team_data_2)
+  if (is_extra_time) {
+    team_data_2 <- rbind(team_data_2, team_data_2_et)
+  }
   write.csv(team_data, paste("match-team-data-table.csv", sep=""))
   
   # Get the player data for each period.
-  player_data_1_match <- get_player_data(match_tables, 0, 1)
-  player_data_1_1h <- get_player_data(match_tables, 1, 1)
-  player_data_1_2h <- get_player_data(match_tables, 2, 1)
-  player_data_2_match <- get_player_data(match_tables, 0, 2)
-  player_data_2_1h <- get_player_data(match_tables, 1, 2)
-  player_data_2_2h <- get_player_data(match_tables, 2, 2)
+  player_data_1_match <- get_player_data(match_tables, 0, 1, is_extra_time)
+  player_data_1_1h <- get_player_data(match_tables, 1, 1, is_extra_time)
+  player_data_1_2h <- get_player_data(match_tables, 2, 1, is_extra_time)
+  player_data_2_match <- get_player_data(match_tables, 0, 2, is_extra_time)
+  player_data_2_1h <- get_player_data(match_tables, 1, 2, is_extra_time)
+  player_data_2_2h <- get_player_data(match_tables, 2, 2, is_extra_time)
+  if (is_extra_time) {
+    player_data_1_et <- get_player_data(match_tables, 3, 1, is_extra_time)
+    player_data_2_et <- get_player_data(match_tables, 3, 2, is_extra_time)
+  }
   # Merge the player data for the different periods.
   player_data_1 <- rbind(player_data_1_match, player_data_1_1h)
   player_data_1 <- rbind(player_data_1, player_data_1_2h)
+  if (is_extra_time) {
+    player_data_1 <- rbind(player_data_1, player_data_1_et)
+  }
   player_data_2 <- rbind(player_data_2_match, player_data_2_1h)
   player_data_2 <- rbind(player_data_2, player_data_2_2h)
   player_data <- rbind(player_data_1, player_data_2)
+  if (is_extra_time) {
+    player_data_2 <- rbind(player_data_2, player_data_2_et)
+  }
   write.csv(player_data, paste("match-player-data-table.csv", sep=""))
   #match_team_data <- get_match_team_data(match_tables)
   
@@ -543,6 +626,7 @@ process_round_table <- function(round_df, round_links_df, base_url) {
   for (row_num in seq(1, nrow(round_df))) {
     # For each row (match), build a data frame that contains all the information
     # we want to pass on to the next function.
+    print(paste("Processing match on", round_df[row_num, "Date"], ":", round_df[row_num, "Match"]))
     
     match_status <- round_df[row_num, "Status"]
     if (match_status != "Full Time") {
@@ -591,6 +675,8 @@ string <- "Round: Round 15"
 numbers <- get_str_numbers(string, 1)
 print(numbers)
 
+process_match_page("http://live.nrlstats.com/matches/nrl/match35059.html")
+
 date_str <- get_date_str("Date: | Fri 19 Jun 2015")
 
 base_url <- "http://live.nrlstats.com"
@@ -610,7 +696,8 @@ season_team_data <- NULL
 season_player_data <- NULL
 
 # Loop through the round tables.
-for (i in seq(2, 4)){#length(round_tables))) {
+print(paste("Number of round tables:", length(round_tables)))
+for (i in seq(from=1, to=length(round_tables))) {
   round_table <- round_tables[[i]]
   round_table_links <- round_tables_links[[i]]
   # Write the table out to a CSV file.
@@ -621,6 +708,10 @@ for (i in seq(2, 4)){#length(round_tables))) {
   match_data <- round_data[[1]]
   team_data <- round_data[[2]]
   player_data <- round_data[[3]]
+  
+  write.csv(match_data, paste("round-match-data_", sprintf("%02d",i), ".csv", sep=""))
+  write.csv(team_data, paste("round-team-data_", sprintf("%02d",i), ".csv", sep=""))
+  write.csv(player_data, paste("round-player-data_", sprintf("%02d",i), ".csv", sep=""))
   
   if (is.null(season_match_data)) {
     season_match_data <- match_data
