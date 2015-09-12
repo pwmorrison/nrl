@@ -8,7 +8,7 @@ graphics.off() # This closes all of R's graphics windows.
 rm(list=ls())  # Careful! This clears all of R's memory!
 
 # Load the functions used below:
-source("C:/Users/Renee/Documents/paul/DBDA2Eprograms/DBDA2Eprograms/DBDA2E-utilities.R") # Must be in R's current working directory.
+source("D:/nrl/DBDA2Eprograms/DBDA2Eprograms/DBDA2E-utilities.R") # Must be in R's current working directory.
 require(rjags)               # Must have previously installed package rjags.
 
 fileNameRoot="Jags-NRLModel" # For output file names.
@@ -148,7 +148,7 @@ plotAllDists = function( codaSamples , data , compValMu , # must specify compVal
 
 # Load the data:
 #myData = read.csv("C:/Users/Renee/Documents/paul/nrl/sportsbetting_data/scores_2014.csv")
-myData = read.csv("C:/Users/Renee/Documents/paul/nrl/sportsbetting_data/scores_20150726.csv")
+myData = read.csv("D:/nrl/sportsbetting_data/scores_20150726.csv")
 # Restrict the amount of data, to make it faster for testing.
 myData = myData[1:50,]
 y1 = myData$Home.Score
